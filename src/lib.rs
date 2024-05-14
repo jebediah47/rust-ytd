@@ -1,18 +1,19 @@
-//! Rust-Wrapper for youtube-dl
+//! Rust wrapper for youtube-dl
 //!
 //! # Example
 //!
 //! ```no_run
-//! use ytd_rs::{YoutubeDL, Arg};
+//! use rust_ytd::{YoutubeDL, Arg};
 //! use std::path::PathBuf;
 //! use std::error::Error;
 //! fn main() -> Result<(), Box<dyn Error>> {
 //!     // youtube-dl arguments quietly run process and to format the output
 //!     // one doesn't take any input and is an option, the other takes the desired output format as input
 //!     let args = vec![Arg::new("--quiet"), Arg::new_with_arg("--output", "%(title).90s.%(ext)s")];
-//!     let link = "https://www.youtube.com/watch?v=uTO0KnDsVH0";
+//!     let link = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 //!     let path = PathBuf::from("./path/to/download/directory");
-//!     let ytd = YoutubeDL::new(&path, args, link)?;
+//!     let ytd_path = PathBuf::from("/path/to/youtube-dl");
+//!     let ytd = YoutubeDL::new(&path, args, link, &ytd_path)?;
 //!
 //!     // start download
 //!     let download = ytd.download()?;
@@ -38,14 +39,6 @@ use std::{path::Path, process::Command};
 pub mod error;
 type Result<T> = std::result::Result<T, YoutubeDLError>;
 
-const YOUTUBE_DL_COMMAND: &str = if cfg!(feature = "youtube-dlc") {
-    "youtube-dlc"
-} else if cfg!(feature = "yt-dlp") {
-    "yt-dlp"
-} else {
-    "youtube-dl"
-};
-
 /// A structure that represents an argument of a youtube-dl command.
 ///
 /// There are two different kinds of Arg:
@@ -55,7 +48,7 @@ const YOUTUBE_DL_COMMAND: &str = if cfg!(feature = "youtube-dlc") {
 /// # Example
 ///
 /// ```
-/// use ytd_rs::Arg;
+/// use rust_ytd::Arg;
 /// // youtube-dl option to embed metadata into the file
 /// // doesn't take any input
 /// let simple_arg = Arg::new("--add-metadata");
@@ -98,12 +91,14 @@ impl Display for Arg {
 /// Structure that represents a youtube-dl task.
 ///
 /// Every task needs a download location, a list of ['Arg'] that can be empty
+/// a [`ytd_path`] that is the path to the youtube-dl executable
 /// and a ['link'] to the desired source.
 #[derive(Clone, Debug)]
 pub struct YoutubeDL {
     path: PathBuf,
     links: Vec<String>,
     args: Vec<Arg>,
+    ytd_path: PathBuf,
 }
 
 ///
@@ -119,7 +114,6 @@ pub struct YoutubeDLResult {
 }
 
 impl YoutubeDLResult {
-    /// creates a new YoutubeDLResult
     fn new(path: &PathBuf) -> YoutubeDLResult {
         YoutubeDLResult {
             path: path.clone(),
@@ -138,27 +132,20 @@ impl YoutubeDLResult {
     }
 }
 
+
 impl YoutubeDL {
     /// Creates a new YoutubeDL job to be executed.
     /// It takes a path where youtube-dl should be executed, a vec! of [`Arg`] that can be empty
     /// and finally a link that can be `""` if no video should be downloaded
     ///
     /// The path gets canonicalized and the directory gets created by the constructor
-    pub fn new_multiple_links(
-        dl_path: &PathBuf,
-        args: Vec<Arg>,
-        links: Vec<String>,
-    ) -> Result<YoutubeDL> {
-        // create path
+    pub fn new(dl_path: &PathBuf, args: Vec<Arg>, link: &str, ytd_path: &PathBuf) -> Result<YoutubeDL> {
         let path = Path::new(dl_path);
 
-        // check if it already exists
         if !path.exists() {
-            // if not create
             create_dir_all(&path)?;
         }
 
-        // return error if no directory
         if !path.is_dir() {
             return Err(YoutubeDLError::IOError(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -166,13 +153,14 @@ impl YoutubeDL {
             )));
         }
 
-        // absolute path
         let path = canonicalize(dl_path)?;
-        Ok(YoutubeDL { path, links, args })
-    }
 
-    pub fn new(dl_path: &PathBuf, args: Vec<Arg>, link: &str) -> Result<YoutubeDL> {
-        YoutubeDL::new_multiple_links(dl_path, args, vec![link.to_string()])
+        Ok(YoutubeDL {
+            path,
+            links: vec![link.to_string()],
+            args,
+            ytd_path: ytd_path.clone(),
+        })
     }
 
     /// Starts the download and returns when finished the result as [`YoutubeDLResult`].
@@ -189,20 +177,25 @@ impl YoutubeDL {
     }
 
     fn spawn_youtube_dl(&self) -> Result<Output> {
-        let mut cmd = Command::new(YOUTUBE_DL_COMMAND);
+        let mut cmd = Command::new(&self.ytd_path);
         cmd.current_dir(&self.path)
             .env("LC_ALL", "en_US.UTF-8")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        for arg in self.args.iter() {
+        for arg in &self.args {
             match &arg.input {
-                Some(input) => cmd.arg(&arg.arg).arg(input),
-                None => cmd.arg(&arg.arg),
+                Some(input) => {
+                    cmd.arg(&arg.arg);
+                    cmd.arg(input);
+                }
+                None => {
+                    cmd.arg(&arg.arg);
+                }
             };
         }
 
-        for link in self.links.iter() {
+        for link in &self.links {
             cmd.arg(&link);
         }
 
@@ -214,26 +207,32 @@ impl YoutubeDL {
 #[cfg(test)]
 mod tests {
     use crate::{Arg, YoutubeDL};
-    use regex::Regex;
     use std::{env, error::Error};
+    use regex::Regex;
+    use toml::Value;
 
     #[test]
     fn version() -> Result<(), Box<dyn Error>> {
         let current_dir = env::current_dir()?;
+        let config_file = current_dir.join("test_config.toml");
+
+        let config_str = std::fs::read_to_string(&config_file)?;
+        let config: Value = toml::from_str(&config_str)?;
+
+        let yt_dlp_path = config["ytd_path"].as_str().ok_or("ytd_path not found")?;
+
         let ytd = YoutubeDL::new(
             &current_dir,
-            // get youtube-dl version
             vec![Arg::new("--version")],
-            // we don't need a link to print version
             "",
+            &yt_dlp_path.into(),
         )?;
 
         let regex = Regex::new(r"\d{4}\.\d{2}\.\d{2}")?;
         let output = ytd.download()?;
 
-        // check output
-        // fails if youtube-dl is not installed
         assert!(regex.is_match(output.output()));
+
         Ok(())
     }
 }
