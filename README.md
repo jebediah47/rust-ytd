@@ -1,5 +1,5 @@
 # rust-ytd
-[![Build status](https://github.com/nirusu99/ytd-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/jebediah47/rust-ytd/actions)
+[![Build status](https://github.com/jebediah47/rust-ytd/actions/workflows/rust.yml/badge.svg)](https://github.com/jebediah47/rust-ytd/actions)
 [![docs.rs](https://docs.rs/ytd-rs/badge.svg)](https://docs.rs/ytd-rs)
 
 This is a simple wrapper for [yt-dlp](https://github.com/yt-dlp/yt-dlp) in rust.
