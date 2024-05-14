@@ -32,7 +32,7 @@ jobs:
       - name: Remove lock file
         run: rm target/doc/.lock
       - name: ls in tree format
-        run: ls -aR | grep ":$" | perl -pe 's/:$//;s/[^-][^\/]*\//    /g;s/^    (\S)/└── \1/;s/(^    |    (?= ))/│   /g;s/    (\S)/└── \1/'
+        run: find . | sed -e "s/[^-][^\/]*\//  |/g" -e "s/|\([^ ]\)/|-\1/" 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
