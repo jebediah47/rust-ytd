@@ -1,19 +1,16 @@
 [package]
-name = "ytd-rs"
-version = "0.1.7"
-authors = ["Nils Pukropp <nils.pukropp@outlook.de>"]
+name = "rust-ytd"
+version = "0.2.0"
+authors = ["Nils Pukropp <nils.pukropp@outlook.de>", "Christian Llpo <jebediah47@protonmail.com>"]
 edition = "2018"
-license-file ="LICENSE"
-description = "A simple wrapper for youtube-dl. Youtube-dl has to be installed on the system"
-homepage = "https://github.com/Nirusu99/ytd-rs"
-repository = "https://github.com/Nirusu99/ytd-rs"
+license = "MIT"
+license-file = "LICENSE"
+description = "A simple wrapper for yt-dlp."
+homepage = "https://github.com/jebediah47/rust-ytd"
+repository = "https://github.com/jebediah47/rust-ytd"
 readme = "README.md"
 
-[features]
-yt-dlp = []
-youtube-dlc = []
-
-
 [dependencies]
-regex = "1.5.5"
-thiserror = "1.0.30"
+regex = "1.10.4"
+thiserror = "1.0.60"
+toml = "0.8.12"
