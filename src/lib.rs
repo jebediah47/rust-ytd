@@ -91,7 +91,6 @@ impl Display for Arg {
 /// Structure that represents a youtube-dl task.
 ///
 /// Every task needs a download location, a list of ['Arg'] that can be empty
-/// a [`ytd_path`] that is the path to the youtube-dl executable
 /// and a ['link'] to the desired source.
 #[derive(Clone, Debug)]
 pub struct YoutubeDL {
