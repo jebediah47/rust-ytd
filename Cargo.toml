@@ -11,6 +11,6 @@ repository = "https://github.com/jebediah47/rust-ytd"
 readme = "README.md"
 
 [dependencies]
-regex = "1.10.4"
+regex = "1.13.1"
 thiserror = "2.0.0"
 toml = "1.0.0"
