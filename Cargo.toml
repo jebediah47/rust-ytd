@@ -12,5 +12,5 @@ readme = "README.md"
 
 [dependencies]
 regex = "1.10.4"
-thiserror = "2.0.0"
+thiserror = "2.0.21"
 toml = "1.0.0"
